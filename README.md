@@ -29,7 +29,7 @@ window.onload = function () {
 
   // by default, hydra makes everything global.
   // see options to change parameters
-  hydra.osc().out()
+  osc().out()
 }
 ```
 
@@ -45,8 +45,6 @@ If `opts` is specified, the default options (shown below) will be overridden.
 {
   canvas: null, // canvas element to render to. If none is supplied, a canvas will be created and appended to the screen
 
-  pb: null, // an instance of rtc-patch-bay to use for networking
-
   autoLoop: true, // if true, will automatically loop using requestAnimationFrame.If set to false, you must implement your own loop function using the tick() method (below)
 
   makeGlobal: true, // if false, will not pollute global namespace
@@ -54,13 +52,17 @@ If `opts` is specified, the default options (shown below) will be overridden.
   numSources: 4, // number of source buffers to create initially
 
   numOutputs: 4, // number of output buffers to use. Note: untested with numbers other than 4. render() method might behave unpredictably
+
+  extendTransforms: [] // An array of transforms to be added to the synth, or an object representing a single transform
+
+  precision: 'mediump' // precision of shaders, can also be 'highp'
 }
 
 ```
 
-resize the hydra canvas (note: this changes the underlying resolution. To change appearance on the screen, you should edit the css)
+set the resolution of the hydra canvas (note: this changes the underlying resolution. To change appearance on the screen, you should edit the css)
 ```
-hydra.resize(width, height)
+hydra.setResolution(width, height)
 ```
 
 render an oscillator with parameters frequency, sync, and rgb offset:
@@ -151,10 +153,11 @@ s0.clear()
 
 
 #### Non-global mode [in progress]
-If makeGlobal is set to false, buffers and functions can be accessed via the hydra instance. Note that sources and buffers are contained in an array and accessed by index. E.g.:
+If makeGlobal is set to false, buffers and functions can be accessed via the synth property of the hydra instance. Note that sources and buffers are contained in an array and accessed by index. E.g.:
 ```
-hydra.s[0].initCam()
-hydra.osc().out(hydra.o[0])
+let synth = hydra.synth
+synth.osc().out()
+synth.s0.initCam()
 ```
 
 #### Custom render loop
