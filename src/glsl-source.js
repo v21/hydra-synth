@@ -1,14 +1,15 @@
-const generateGlsl = require('./glsl-utils.js').generateGlsl
-const formatArguments = require('./glsl-utils.js').formatArguments
+import generateGlsl from './generate-glsl.js'
+// const formatArguments = require('./glsl-utils.js').formatArguments
 
 // const glslTransforms = require('./glsl/composable-glsl-functions.js')
-const utilityGlsl = require('./glsl/utility-functions.js')
+import utilityGlsl from './glsl/utility-functions.js'
 
 var GlslSource = function (obj) {
   this.transforms = []
   this.transforms.push(obj)
   this.defaultOutput = obj.defaultOutput
   this.synth = obj.synth
+  this.type = 'GlslSource'
   this.defaultUniforms = obj.defaultUniforms
   return this
 }
@@ -62,13 +63,12 @@ GlslSource.prototype.glsl = function () {
 }
 
 GlslSource.prototype.compile = function (transforms) {
-
-  var shaderInfo = generateGlsl(transforms)
+  var shaderInfo = generateGlsl(transforms, this.synth)
   var uniforms = {}
   shaderInfo.uniforms.forEach((uniform) => { uniforms[uniform.name] = uniform.value })
 
   var frag = `
-  precision mediump float;
+  precision ${this.defaultOutput.precision} float;
   ${Object.values(shaderInfo.uniforms).map((uniform) => {
     let type = uniform.type
     switch (uniform.type) {
@@ -111,4 +111,4 @@ GlslSource.prototype.compile = function (transforms) {
 
 }
 
-module.exports = GlslSource
+export default GlslSource

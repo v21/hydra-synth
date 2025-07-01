@@ -1,14 +1,20 @@
-const Output = require('./src/output.js')
-const loop = require('raf-loop')
-const Source = require('./src/hydra-source.js')
-const Mouse = require('mouse-change')()
-const Audio = require('./src/lib/audio.js')
-const VidRecorder = require('./src/lib/video-recorder.js')
-const ArrayUtils = require('./src/lib/array-utils.js')
-const Sandbox = require('./src/eval-sandbox.js')
 
-const Generator = require('./src/generator-factory.js')
+import Output from './output.js'
+import loop from 'raf-loop'
+import Source from './hydra-source.js'
+import MouseTools from './lib/mouse.js'
+import Audio from './lib/audio.js'
+import VidRecorder from './lib/video-recorder.js'
+import ArrayUtils from './lib/array-utils.js'
+// import strudel from './lib/strudel.js'
+import Sandbox from './eval-sandbox.js'
+import Generator from './generator-factory.js'
+import regl from 'regl'
+// const window = global.window
 
+
+
+const Mouse = MouseTools()
 // to do: add ability to pass in certain uniforms and transforms
 class HydraRenderer {
 
@@ -23,7 +29,7 @@ class HydraRenderer {
     detectAudio = true,
     enableStreamCapture = true,
     canvas,
-    precision = 'mediump',
+    precision,
     extendTransforms = {} // add your own functions on init
   } = {}) {
 
@@ -38,7 +44,7 @@ class HydraRenderer {
 
     this._initCanvas(canvas)
 
-
+    //global.window.test = 'hi'
     // object that contains all properties that will be made available on the global context and during local evaluation
     this.synth = {
       time: 0,
@@ -54,23 +60,33 @@ class HydraRenderer {
       render: this._render.bind(this),
       setResolution: this.setResolution.bind(this),
       update: (dt) => {},// user defined update function
-      hush: this.hush.bind(this)
+      hush: this.hush.bind(this),
+      tick: this.tick.bind(this)
     }
+
+    if (makeGlobal) window.loadScript = this.loadScript
+
 
     this.timeSinceLastUpdate = 0
     this._time = 0 // for internal use, only to use for deciding when to render frames
 
-  //  window.synth = this.synth
-
     // only allow valid precision options
     let precisionOptions = ['lowp','mediump','highp']
-    let precisionValid = precisionOptions.includes(precision.toLowerCase())
-
-    this.precision = precisionValid ? precision.toLowerCase() : 'mediump'
-
-    if(!precisionValid){
-      console.warn('[hydra-synth warning]\nConstructor was provided an invalid floating point precision value of "' + precision + '". Using default value of "mediump" instead.')
+    if(precision && precisionOptions.includes(precision.toLowerCase())) {
+      this.precision = precision.toLowerCase()
+      //
+      // if(!precisionValid){
+      //   console.warn('[hydra-synth warning]\nConstructor was provided an invalid floating point precision value of "' + precision + '". Using default value of "mediump" instead.')
+      // }
+    } else {
+      let isIOS =
+    (/iPad|iPhone|iPod/.test(navigator.platform) ||
+      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)) &&
+    !window.MSStream;
+      this.precision = isIOS ? 'highp' : 'mediump'
     }
+
+
 
     this.extendTransforms = extendTransforms
 
@@ -92,9 +108,14 @@ class HydraRenderer {
     }
 
     if (enableStreamCapture) {
-      this.captureStream = this.canvas.captureStream(25)
-      // to do: enable capture stream of specific sources and outputs
-      this.synth.vidRecorder = new VidRecorder(this.captureStream)
+      try {
+        this.captureStream = this.canvas.captureStream(25)
+        // to do: enable capture stream of specific sources and outputs
+        this.synth.vidRecorder = new VidRecorder(this.captureStream)
+      } catch (e) {
+        console.warn('[hydra-synth warning]\nnew MediaSource() is not currently supported on iOS.')
+        console.error(e)
+      }
     }
 
     if(detectAudio) this._initAudio()
@@ -119,22 +140,46 @@ class HydraRenderer {
       source.clear()
     })
     this.o.forEach((output) => {
-      this.synth.solid(1, 1, 1, 0).out(output)
+      this.synth.solid(0, 0, 0, 0).out(output)
     })
+    this.synth.render(this.o[0])
+    // this.synth.update = (dt) => {}
+    this.sandbox.set('update', (dt) => {})
   }
+
+  loadScript(url = "") {
+   const p = new Promise((res, rej) => {
+     var script = document.createElement("script");
+     script.onload = function () {
+       console.log(`loaded script ${url}`);
+       res();
+     };
+     script.onerror = (err) => {
+       console.log(`error loading script ${url}`, "log-error");
+       res()
+     };
+     script.src = url;
+     document.head.appendChild(script);
+   });
+   return p;
+ }
 
   setResolution(width, height) {
   //  console.log(width, height)
     this.canvas.width = width
     this.canvas.height = height
-    this.width = width
-    this.height = height
+    this.width = width // is this necessary?
+    this.height = height // ?
+    this.sandbox.set('width', width)
+    this.sandbox.set('height', height)
+    console.log(this.width)
     this.o.forEach((output) => {
       output.resize(width, height)
     })
     this.s.forEach((source) => {
       source.resize(width, height)
     })
+    this.regl._refresh()
      console.log(this.canvas.width)
   }
 
@@ -166,6 +211,7 @@ class HydraRenderer {
     const that = this
     this.synth.a = new Audio({
       numBins: 4,
+      parentEl: this.canvas.parentNode
       // changeListener: ({audio}) => {
       //   that.a = audio.bins.map((_, index) =>
       //     (scale = 1, offset = 0) => () => (audio.fft[index] * scale + offset)
@@ -199,7 +245,7 @@ class HydraRenderer {
   }
 
   _initRegl () {
-    this.regl = require('regl')({
+    this.regl = regl({
     //  profile: true,
       canvas: this.canvas,
       pixelRatio: 1//,
@@ -316,7 +362,8 @@ class HydraRenderer {
         regl: this.regl,
         width: this.width,
         height: this.height,
-        precision: this.precision
+        precision: this.precision,
+        label: `o${index}`
       })
     //  o.render()
       o.id = index
@@ -331,12 +378,12 @@ class HydraRenderer {
   _initSources (numSources) {
     this.s = []
     for(var i = 0; i < numSources; i++) {
-      this.createSource()
+      this.createSource(i)
     }
   }
 
-  createSource () {
-    let s = new Source({regl: this.regl, pb: this.pb, width: this.width, height: this.height})
+  createSource (i) {
+    let s = new Source({regl: this.regl, pb: this.pb, width: this.width, height: this.height, label: `s${i}`})
     this.synth['s' + this.s.length] = s
     this.s.push(s)
     return s
@@ -376,15 +423,14 @@ class HydraRenderer {
     this.sandbox.tick()
     if(this.detectAudio === true) this.synth.a.tick()
   //  let updateInterval = 1000/this.synth.fps // ms
-    if(this.synth.update) {
-      try { this.synth.update(dt) } catch (e) { console.log(error) }
-    }
-
     this.sandbox.set('time', this.synth.time += dt * 0.001 * this.synth.speed)
     this.timeSinceLastUpdate += dt
     if(!this.synth.fps || this.timeSinceLastUpdate >= 1000/this.synth.fps) {
     //  console.log(1000/this.timeSinceLastUpdate)
       this.synth.stats.fps = Math.ceil(1000/this.timeSinceLastUpdate)
+      if(this.synth.update) {
+        try { this.synth.update(this.timeSinceLastUpdate) } catch (e) { console.log(e) }
+      }
     //  console.log(this.synth.speed, this.synth.time)
       for (let i = 0; i < this.s.length; i++) {
         this.s[i].tick(this.synth.time)
@@ -425,4 +471,4 @@ class HydraRenderer {
 
 }
 
-module.exports = HydraRenderer
+export default HydraRenderer

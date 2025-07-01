@@ -2,7 +2,7 @@
 // for now, just avoids polluting the global namespace
 // should probably be replaced with an abstract syntax tree
 
-module.exports = (parent) => {
+export default (parent) => {
   var initialCode = ``
 
   var sandbox = createSandbox(initialCode)
@@ -21,10 +21,10 @@ module.exports = (parent) => {
   }
 
   function createSandbox (initial) {
-    eval(initial)
+    globalThis.eval(initial)
     // optional params
     var localEval = function (code)  {
-      eval(code)
+      globalThis.eval(code)
     }
 
     // API/data for end-user

@@ -1,5 +1,5 @@
 /*
-Format for adding functions to hydra. For each entry in this file, hydra automatically generates a glsl function and javascript function with the same name. You can also add functions dynamically using setFunction(object).
+Format for adding functions to hydra. For each entry in this file, hydra automatically generates a glsl function and javascript function with the same name. You can also ass functions dynamically using setFunction(object).
 
 {
   name: 'osc', // name that will be used to access function in js as well as in glsl
@@ -68,7 +68,7 @@ const types = {
 
 */
 
-module.exports = [
+export default () => [
   {
   name: 'noise',
   type: 'src',
@@ -188,7 +188,7 @@ module.exports = [
    float a = atan(st.x,st.y)+3.1416;
    float r = (2.*3.1416)/sides;
    float d = cos(floor(.5+a/r)*r-a)*length(st);
-   return vec4(vec3(1.0-smoothstep(radius,radius + smoothing,d)), 1.0);`
+   return vec4(vec3(1.0-smoothstep(radius,radius + smoothing + 0.0000001,d)), 1.0);`
 },
 {
   name: 'gradient',
@@ -263,7 +263,7 @@ module.exports = [
   glsl:
 `   vec2 xy = _st - vec2(0.5);
    float ang = angle + speed *time;
-   xy = mat2(cos(angle),-sin(ang), sin(ang),cos(ang))*xy;
+   xy = mat2(cos(ang),-sin(ang), sin(ang),cos(ang))*xy;
    xy += 0.5;
    return xy;`
 },
@@ -593,7 +593,7 @@ module.exports = [
 `
    _st.x += scrollX + time*speedX;
    _st.y += scrollY + time*speedY;
-   return _st;`
+   return fract(_st);`
 },
 {
   name: 'scrollX',
@@ -612,7 +612,7 @@ module.exports = [
   ],
   glsl:
 `   _st.x += scrollX + time*speed;
-   return _st;`
+   return fract(_st);`
 },
 {
   name: 'modulateScrollX',
@@ -630,8 +630,8 @@ module.exports = [
     }
   ],
   glsl:
-`   _st.x += _c0.r*amount + time*speed;
-   return _st;`
+`   _st.x += _c0.r*scrollX + time*speed;
+   return fract(_st);`
 },
 {
   name: 'scrollY',
@@ -650,7 +650,7 @@ module.exports = [
   ],
   glsl:
 `   _st.y += scrollY + time*speed;
-   return _st;`
+   return fract(_st);`
 },
 {
   name: 'modulateScrollY',
@@ -669,7 +669,7 @@ module.exports = [
   ],
   glsl:
 `   _st.y += _c0.r*scrollY + time*speed;
-   return _st;`
+   return fract(_st);`
 },
 {
   name: 'add',
@@ -704,7 +704,7 @@ module.exports = [
 
   ],
   glsl:
-`   return vec4(mix(_c0.rgb, _c1.rgb, _c1.a), _c0.a+_c1.a);`
+`   return vec4(mix(_c0.rgb, _c1.rgb, _c1.a), clamp(_c0.a + _c1.a, 0.0, 1.0));`
 },
 {
   name: 'blend',
@@ -877,9 +877,10 @@ module.exports = [
 
   ],
   glsl:
-`   float a = _luminance(_c1.rgb);
-   return vec4(_c0.rgb*a, a);`
+  `   float a = _luminance(_c1.rgb);
+  return vec4(_c0.rgb*a, a*_c0.a);`
 },
+
 {
   name: 'luma',
   type: 'color',
@@ -896,7 +897,7 @@ module.exports = [
     }
   ],
   glsl:
-`   float a = smoothstep(threshold-tolerance, threshold+tolerance, _luminance(_c0.rgb));
+`   float a = smoothstep(threshold-(tolerance+0.0000001), threshold+(tolerance+0.0000001), _luminance(_c0.rgb));
    return vec4(_c0.rgb*a, a);`
 },
 {
@@ -915,7 +916,7 @@ module.exports = [
     }
   ],
   glsl:
-`   return vec4(vec3(smoothstep(threshold-tolerance, threshold+tolerance, _luminance(_c0.rgb))), _c0.a);`
+`   return vec4(vec3(smoothstep(threshold-(tolerance+0.0000001), threshold+(tolerance+0.0000001), _luminance(_c0.rgb))), _c0.a);`
 },
 {
   name: 'color',

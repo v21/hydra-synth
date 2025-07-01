@@ -1,4 +1,4 @@
-const Meyda = require('meyda')
+import Meyda from 'meyda'
 
 class Audio {
   constructor ({
@@ -7,7 +7,8 @@ class Audio {
     smooth = 0.4,
     max = 15,
     scale = 10,
-    isDrawing = false
+    isDrawing = false,
+    parentEl = document.body
   }) {
     this.vol = 0
     this.scale = scale
@@ -37,14 +38,14 @@ class Audio {
     this.canvas.style.position = 'absolute'
     this.canvas.style.right = '0px'
     this.canvas.style.bottom = '0px'
-    document.body.appendChild(this.canvas)
+    parentEl.appendChild(this.canvas)
 
     this.isDrawing = isDrawing
     this.ctx = this.canvas.getContext('2d')
     this.ctx.fillStyle="#DFFFFF"
     this.ctx.strokeStyle="#0ff"
     this.ctx.lineWidth=0.5
-
+    if(window.navigator.mediaDevices) {
     window.navigator.mediaDevices.getUserMedia({video: false, audio: true})
       .then((stream) => {
       //  console.log('got mic stream', stream)
@@ -66,6 +67,7 @@ class Audio {
         })
       })
       .catch((err) => console.log('ERROR', err))
+    }
   }
 
   detectBeat (level) {
@@ -212,4 +214,4 @@ class Audio {
   }
 }
 
-module.exports = Audio
+export default Audio
