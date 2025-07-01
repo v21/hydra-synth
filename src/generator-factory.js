@@ -14,6 +14,7 @@ class GeneratorFactory {
     this.changeListener = changeListener
     this.extendTransforms = extendTransforms
     this.generators = {}
+    this.extraUtils = []
     this.init()
   }
   init () {
@@ -86,9 +87,15 @@ class GeneratorFactory {
   }
 
   setFunction(obj) {
-    var processedGlsl = processGlsl(obj)
-  //  console.log(processedGlsl)
-    if(processedGlsl) this._addMethod(obj.name, processedGlsl)
+    if (obj.type === "util") {
+      this.extraUtils.push(obj);
+    }
+    else {
+      var processedGlsl = processGlsl(obj)
+    //  console.log(processedGlsl)
+      if(processedGlsl) this._addMethod(obj.name, processedGlsl)
+    }
+    
   }
 }
 

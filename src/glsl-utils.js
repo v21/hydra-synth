@@ -16,6 +16,7 @@ module.exports = {
     var shaderParams = {
       uniforms: [], // list of uniforms used in shader
       glslFunctions: [], // list of functions used in shader
+      glslUtilFunctions: [], //list of utility functions always included in shader
       fragColor: ''
     }
 

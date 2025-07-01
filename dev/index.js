@@ -10,8 +10,8 @@ function init () {
  var hydra = new Hydra()
   window.hydra = hydra
 //
-//   exampleAddFunction(hydra)
-// //  exampleScreen()
+  // exampleAddFunction(hydra)
+//  exampleScreen()
 //
 // exampleCustomCanvas()
  exampleSmoothing()
@@ -103,33 +103,69 @@ function exampleExtendTransforms() {
 function exampleAddFunction(hydra) {
  // example custom function
  setFunction({
- name: 'myOsc', // name that will be used to access function as well as within glsl
- type: 'src', // can be src: vec4(vec2 _st), coord: vec2(vec2 _st), color: vec4(vec4 _c0), combine: vec4(vec4 _c0, vec4 _c1), combineCoord: vec2(vec2 _st, vec4 _c0)
- inputs: [
-   {
-     name: 'freq',
-     type: 'float', // 'float'   //, 'texture', 'vec4'
-     default: 0.2
-   },
-   {
-         name: 'sync',
-         type: 'float',
-         default: 0.1
-       },
-       {
-         name: 'offset',
-         type: 'float',
-         default: 0.0
-       }
- ],    glsl: `
-    vec2 st = _st;
-   float r = sin((st.x-offset*20./freq-time*sync)*freq)*0.5  + 0.5;
-   float g = sin((st.x+time*sync)*freq)*0.5 + 0.5;
-   float b = sin((st.x+offset/freq+time*sync)*freq)*0.5  + 0.5;
-   return vec4(r, g, b, 1.0);
-  `})
+    type: 'util',
+    glsl:
+  `
+      vec2 hex_round(vec2 hex){
+        float z = - (hex.x + hex.y);
+        float rx = round(hex.x);
+        float ry = round(hex.y);
+        float rz = round(z);
+        float x_err = abs(rx - hex.x);
+        float y_err = abs(ry - hex.y);
+        float z_err = abs(rz - z);
+        if (x_err > y_err && x_err > z_err){
+          rx = -ry-rz;
+        }
+        else if (y_err > z_err) {
+          ry = -rx-rz;
+        }
+        return vec2(rx,ry);
+      }
+      `
+  });
+  setFunction({
+    type: 'util',
+    glsl:
+  `
+  vec2 pixel2hex (vec2 cp) {
+    float q = (0.5773502 * cp.x - 0.33333333 * cp.y);
+    float r = 0.6666666 * cp.y;
+    return hex_round(vec2(q,r) / size);
+  }
+      `
+  });
+  setFunction({
+    type: 'util',
+    glsl:
+  `
+  vec2 hex2pixel (vec2 hp) {
+    float x = 1.732050 * (hp.x + hp.y/2);
+    float y = 1.5 * hp.y;
+    return vec2(x,y) * size;
+  }
+      `
+  });
+  setFunction(
+  {
+    name: 'hex',
+    type: 'coord',
+    inputs: [
+      {
+        type: 'float',
+        name: 'size',
+        default: '0.005'
+      },
+    ],
+    glsl:
+  `return hex2pixel(floor(pixel2hex( _st)));`
+  });
+  
+  
+  
+  
 
-  myOsc(10, 0.2, 0.8).out()
+  osc().hex().out();
   //
   //  // ooo(10, 0.01, 1.2).blur().out()
 }
